@@ -1,41 +1,72 @@
-import type { MetaFunction } from "@remix-run/node";
+import { generateText } from "ai";
+import { z } from "zod";
+import { openai } from "@ai-sdk/openai";
+import { ActionFunctionArgs } from "@remix-run/node";
+import { Form, useActionData } from "@remix-run/react";
+import { races } from "~/constants";
+import { useRef, useState } from "react";
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "New Remix App" },
-    { name: "description", content: "Welcome to Remix!" },
-  ];
-};
+const CharacterSchema = z.object({
+  race: z.string(),
+  class: z.string(),
+});
+
+export async function action({ request }: ActionFunctionArgs) {
+  const formData = await request.formData();
+  const character = CharacterSchema.parse(Object.fromEntries(formData));
+
+  if (!character.class || !character.race) {
+    return { error: "Please select a character and a class!" };
+  }
+
+  const result = await generateText({
+    model: openai("gpt-3.5-turbo"),
+    system:
+      "You're a world of warcraft name generating system. You have knowledge of the world of warcraft universe and its lore. Based on the character race and character class combination provided by a user, you will use your knowledge to help them come up with character names. The names should be appropriate for the character class and race. Just respond with a list of names and nothing else.",
+    prompt: `I am a returning player to world of warcraft. I've decided I want to play as a ${character.race} ${character.class}. I need help coming up with a name for this character, can you generate 10 names for me?`,
+  });
+
+  return { result };
+}
 
 export default function Index() {
+  const data = useActionData<typeof action>();
+  const [selectedRace, setSelectedRace] = useState("");
+  // return <div>{JSON.stringify(result, null, 2)}</div>;
+  console.log({ selectedRace });
   return (
-    <div style={{ fontFamily: "system-ui, sans-serif", lineHeight: "1.8" }}>
-      <h1>Welcome to Remix</h1>
-      <ul>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/blog"
-            rel="noreferrer"
-          >
-            15m Quickstart Blog Tutorial
-          </a>
-        </li>
-        <li>
-          <a
-            target="_blank"
-            href="https://remix.run/tutorials/jokes"
-            rel="noreferrer"
-          >
-            Deep Dive Jokes App Tutorial
-          </a>
-        </li>
-        <li>
-          <a target="_blank" href="https://remix.run/docs" rel="noreferrer">
-            Remix Docs
-          </a>
-        </li>
-      </ul>
+    <div>
+      <h1>namenomad</h1>
+      <Form method="POST">
+        <fieldset>
+          <legend>race</legend>
+          {races.map((race) => (
+            <div key={race.name}>
+              <input
+                type="radio"
+                name="race"
+                id={race.name}
+                onChange={(event) => setSelectedRace(event.target.value)}
+                value={race.name}
+              />
+              <label htmlFor={race.name}>{race.name}</label>
+            </div>
+          ))}
+        </fieldset>
+        {selectedRace !== "" ? (
+          <fieldset>
+            <legend>class</legend>
+            {races
+              .find((race) => race.name === selectedRace)
+              ?.available_classes.map((c) => (
+                <div key={c}>
+                  <input type="radio" name="class" id={c} value={c} />
+                  <label htmlFor={c}>{c}</label>
+                </div>
+              ))}
+          </fieldset>
+        ) : null}
+      </Form>
     </div>
   );
 }
