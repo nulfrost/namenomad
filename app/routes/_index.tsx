@@ -24,9 +24,9 @@ export async function action({ request }: ActionFunctionArgs) {
     }
 
     const suggestions = await generateText({
-      model: openai("gpt-3.5-turbo"),
+      model: openai("gpt-4o"),
       system:
-        "You're a world of warcraft name generating system. You have knowledge of the world of warcraft universe and its lore. Based on the character race and character class combination provided by a user, you will use your knowledge to help them come up with character names. The names should be appropriate for the character class and race. Just respond with a list of names and nothing else.",
+        "You're a world of warcraft name generating system. You have knowledge of the world of warcraft universe and its lore. Based on the character race and character class combination provided by a user, you will use your knowledge to help them come up with character names. The names should be appropriate for the character class and race. Just respond with a list of comma separated names and nothing else.",
       prompt: `I am a returning player to world of warcraft. I've decided I want to play as a ${result.data.race} ${result.data.class}. I need help coming up with a name for this character, can you generate 10 names for me?`,
     });
 
