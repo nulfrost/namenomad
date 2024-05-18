@@ -4,6 +4,7 @@ import { openai } from "@ai-sdk/openai";
 import { ActionFunctionArgs, json } from "@remix-run/node";
 import { Form, useActionData } from "@remix-run/react";
 import { races } from "~/constants";
+import { Button, Autocomplete, Container, List, Title } from "@mantine/core";
 import { useState } from "react";
 
 const CharacterSchema = z.object({
@@ -26,8 +27,8 @@ export async function action({ request }: ActionFunctionArgs) {
     const suggestions = await generateText({
       model: openai("gpt-4o"),
       system:
-        "You're a world of warcraft name generating system. You have knowledge of the world of warcraft universe and its lore. Based on the character race and character class combination provided by a user, you will use your knowledge to help them come up with character names. The names should be appropriate for the character class and race. Just respond with a list of comma separated names and nothing else.",
-      prompt: `I am a returning player to world of warcraft. I've decided I want to play as a ${result.data.race} ${result.data.class}. I need help coming up with a name for this character, can you generate 10 names for me?`,
+        "You're a world of warcraft character name generating system. You have knowledge of the world of warcraft universe and its lore. Based on the character race and character class combination provided by a user, you will use your knowledge to help them come up with character names. The names should fit the fantasy of an online MMORPG game as well as the class combination. Stay clear of the generic names that are used within world of warcraft and try and come up with new names. The generated names must not exceed 12 characters. Just return the names without any additional information. Remove special characters as well. Do not use any names that are trademarked or copyrighted. Do not use any character names that exist in the game as NPCs. Do not use any names that are offensive or inappropriate. Return a comma separated list and nothing else.",
+      prompt: `I am a returning player to world of warcraft. I've decided I want to play as a ${result.data.race} ${result.data.class}. I need help coming up with a name for this character, can you generate 20 names for me?`,
     });
 
     return json({ error: null, suggestions });
@@ -35,55 +36,67 @@ export async function action({ request }: ActionFunctionArgs) {
     if (error instanceof Error) {
       return json({ error: error.message, suggestions: null }, { status: 500 });
     }
+
+    return json(
+      { error: "Unknown error.", suggestions: null },
+      { status: 500 },
+    );
   }
 }
 
 export default function Index() {
   const data = useActionData<typeof action>();
   const [selectedRace, setSelectedRace] = useState("");
+  console.log(data?.suggestions?.text);
   return (
-    <div>
-      <h1>namenomad</h1>
-      <div>{JSON.stringify(data?.suggestions?.text, null, 2)}</div>
-      <Form method="POST">
-        <fieldset>
-          <legend>race</legend>
-          {races.map((race) => (
-            <>
-              <div key={race.name}>
-                <input
-                  type="radio"
-                  required
-                  name="race"
-                  id={race.name}
-                  onChange={(event) => setSelectedRace(event.target.value)}
-                  value={race.name}
-                />
-                <label htmlFor={race.name}>{race.name}</label>
-              </div>
-            </>
-          ))}
-          {data && data.error ? (
-            <div role="alert" aria-live="assertive">
-              {data.error}
-            </div>
-          ) : null}
-        </fieldset>
+    <Container w={500}>
+      <Title order={1}>namenomad</Title>
+      <Form method="POST" style={{ marginBottom: "3rem" }}>
+        <Autocomplete
+          data={races.map((race) => race.name)}
+          label="Select a race"
+          name="race"
+          id="race"
+          mb={20}
+          onChange={(value) => {
+            setSelectedRace(value);
+          }}
+          placeholder="start typing or click to select a value from the list"
+          error={data?.error ? data.error : undefined}
+          comboboxProps={{
+            transitionProps: { transition: "pop", duration: 200 },
+          }}
+        />
         {selectedRace !== "" ? (
-          <fieldset>
-            <legend>class</legend>
-            {races
+          <Autocomplete
+            name="class"
+            id="class"
+            data={races
               .find((race) => race.name === selectedRace)
-              ?.available_classes.map((c) => (
-                <div key={c}>
-                  <input type="radio" name="class" id={c} value={c} />
-                  <label htmlFor={c}>{c}</label>
-                </div>
-              ))}
-          </fieldset>
+              ?.available_classes.map((c) => c)}
+            label="Select a class"
+            mb={10}
+            placeholder="start typing or click to select a value from the list"
+            error={data?.error ? data.error : undefined}
+            comboboxProps={{
+              transitionProps: { transition: "pop", duration: 200 },
+            }}
+          />
         ) : null}
-        <button type="submit">Generate character names</button>
+        <Button type="submit">Generate character names</Button>
       </Form>
-    </div>
+      <div aria-live="polite" aria-atomic>
+        <Title order={2} size="h3">
+          Suggested names for your character
+        </Title>
+        <List type="ordered" size="lg">
+          {data?.suggestions?.text
+            .split(",")
+            .map((suggestion, index) => (
+              <List.Item key={index}>{suggestion}</List.Item>
+            ))}
+        </List>
+      </div>
+    </Container>
   );
 }
